@@ -1,45 +1,79 @@
-# combat.py - Combat system
 import random
-from player import use_special_attack, reduce_special_cooldown, use_health_potion, use_mana_potion
-from monsters import create_monster
 from utils import get_user_choice, clear_screen
 
-def battle_monster(player):
-    """Main battle function"""
-    # Create a monster based on player level
-    monster = create_monster(player["level"])
+class Combat:
+    def __init__(self, player, monster):
+        self.player = player
+        self.monster = monster
+        self.turn = 1
     
-    clear_screen()
-    print("=" * 50)
-    print("           BATTLE BEGINS!")
-    print("=" * 50)
-    print(f"A wild {monster['name']} appears!")
-    print(f"{monster['name']} - HP: {monster['hp']}, Attack: {monster['attack']}")
-    input("\nPress Enter to start battle...")
-    
-    # Battle loop
-    turn = 1
-    while monster["hp"] > 0 and player["hp"] > 0:
+    def start_battle(self):
+        """Main battle function"""
         clear_screen()
         print("=" * 50)
-        print(f"           BATTLE - Turn {turn}")
+        print("           BATTLE BEGINS!")
         print("=" * 50)
-        print(f"Enemy: {monster['name']} - HP: {monster['hp']}/{monster['max_hp']}")
-        print(f"You: {player['name']} - HP: {player['hp']}/{player['max_hp']} | Mana: {player['mana']}/{player['max_mana']}")
-        print(f"Gold: {player['gold']} | Health Potions: {player['inventory']['health_potions']} | Mana Potions: {player['inventory']['mana_potions']}")
-        print(f"Special Attack Cooldown: {player['special_cooldown']} turns | Mana Cost: {player['special_mana_cost']}")
-        print()
+        print(f"A wild {self.monster.name} appears!")
+        print(f"{self.monster.name} - HP: {self.monster.hp}, Attack: {self.monster.attack}")
+        input("\nPress Enter to start battle...")
         
-        # Player turn
+        # Battle loop
+        while self.monster.hp > 0 and self.player.hp > 0:
+            clear_screen()
+            self._display_battle_status()
+            
+            # Player turn
+            action_result = self._player_turn()
+            
+            if action_result == "escaped":
+                return "escaped"
+            elif action_result == "skip_monster_turn":
+                self._end_turn()
+                continue
+            
+            # Check if monster is defeated
+            if self.monster.hp <= 0:
+                print(f"\n{self.monster.name} is defeated!")
+                print("Victory!")
+                input("\nPress Enter to continue...")
+                return "victory"
+            
+            # Monster turn (only if player didn't use potions)
+            if action_result != "skip_monster_turn":
+                self._monster_turn()
+                
+                # Check if player is defeated
+                if self.player.hp <= 0:
+                    print(f"\nYou have been defeated by {self.monster.name}!")
+                    input("Press Enter to continue...")
+                    return "defeat"
+            
+            self._end_turn()
+        
+        return "ongoing"
+    
+    def _display_battle_status(self):
+        """Display current battle status"""
+        print("=" * 50)
+        print(f"           BATTLE - Turn {self.turn}")
+        print("=" * 50)
+        print(f"Enemy: {self.monster.name} - HP: {self.monster.hp}/{self.monster.max_hp}")
+        print(f"You: {self.player.name} - HP: {self.player.hp}/{self.player.max_hp} | Mana: {self.player.mana}/{self.player.max_mana}")
+        print(f"Gold: {self.player.gold} | Health Potions: {self.player.inventory['health_potions']} | Mana Potions: {self.player.inventory['mana_potions']}")
+        print(f"Special Attack Cooldown: {self.player.special_cooldown} turns | Mana Cost: {self.player.special_mana_cost}")
+        print()
+    
+    def _player_turn(self):
+        """Handle player's turn"""
         print("Choose your action:")
         print("1. Regular Attack")
         
         # Show special attack status
         special_status = ""
-        if player['special_cooldown'] > 0:
-            special_status = f" (COOLDOWN: {player['special_cooldown']} turns)"
-        elif player['mana'] < player['special_mana_cost']:
-            special_status = f" (Need {player['special_mana_cost']} mana, have {player['mana']})"
+        if self.player.special_cooldown > 0:
+            special_status = f" (COOLDOWN: {self.player.special_cooldown} turns)"
+        elif self.player.mana < self.player.special_mana_cost:
+            special_status = f" (Need {self.player.special_mana_cost} mana, have {self.player.mana})"
         
         print(f"2. Special Attack{special_status}")
         print("3. Use Health Potion")
@@ -48,98 +82,79 @@ def battle_monster(player):
         
         choice = get_user_choice("Enter your choice (1-5): ", ["1", "2", "3", "4", "5"])
         
-        player_damage = 0
-        
         if choice == "1":
-            # Regular attack
-            damage_variance = random.randint(-3, 3)
-            player_damage = player["attack"] + damage_variance
-            print(f"\nYou attack {monster['name']} for {player_damage} damage!")
-            
+            return self._regular_attack()
         elif choice == "2":
-            # Special attack
-            success, message = use_special_attack(player)
-            if success:
-                damage_variance = random.randint(-5, 5)
-                player_damage = player["special_damage"] + damage_variance
-                
-                if player["class"] == "Warrior":
-                    print(f"\nYou use MIGHTY SLASH on {monster['name']}!")
-                elif player["class"] == "Mage":
-                    print(f"\nYou cast FIREBALL on {monster['name']}!")
-                else:  # Rogue
-                    print(f"\nYou use SNEAK ATTACK on {monster['name']}!")
-                
-                print(f"Critical hit for {player_damage} damage!")
-                print(f"Mana: {player['mana']}/{player['max_mana']}")
-            else:
-                print(f"\n{message}")
-                input("Press Enter to continue...")
-                continue
-                
+            return self._special_attack()
         elif choice == "3":
-            # Use health potion
-            use_health_potion(player)
+            self.player.use_health_potion()
             input("\nPress Enter to continue...")
-            # Skip to monster turn without dealing damage
-            
+            return "skip_monster_turn"
         elif choice == "4":
-            # Use mana potion
-            use_mana_potion(player)
+            self.player.use_mana_potion()
             input("\nPress Enter to continue...")
-            # Skip to monster turn without dealing damage
-            
+            return "skip_monster_turn"
         elif choice == "5":
-            # Try to run away
-            escape_chance = random.randint(1, 100)
-            if escape_chance <= 30:  # 30% chance to escape
-                print(f"\nYou successfully escaped from {monster['name']}!")
-                input("Press Enter to continue...")
-                return "escaped"
-            else:
-                print(f"\nYou couldn't escape from {monster['name']}!")
-                input("Press Enter to continue...")
-        
-        # Apply damage to monster
-        if player_damage > 0:
-            monster["hp"] -= player_damage
-            input("\nPress Enter to continue...")
-        
-        # Check if monster is defeated
-        if monster["hp"] <= 0:
-            print(f"\n{monster['name']} is defeated!")
-            print("Victory!")
-            input("\nPress Enter to continue...")
-            return "victory"
-        
-        # Monster turn (only if player didn't use potions)
-        if choice not in ["3", "4"]:  # If player didn't use health or mana potion
-            monster_damage_variance = random.randint(-2, 2)
-            monster_damage = monster["attack"] + monster_damage_variance
-            
-            print(f"\n{monster['name']} attacks you for {monster_damage} damage!")
-            player["hp"] -= monster_damage
-            
-            input("Press Enter to continue...")
-            
-            # Check if player is defeated
-            if player["hp"] <= 0:
-                print(f"\nYou have been defeated by {monster['name']}!")
-                input("Press Enter to continue...")
-                return "defeat"
-        
-        # Reduce special attack cooldown
-        reduce_special_cooldown(player)
-        turn += 1
+            return self._try_escape()
     
-    return "ongoing"
-
-def display_battle_status(player, monster, turn):
-    """Display current battle status"""
-    print("=" * 50)
-    print(f"           BATTLE - Turn {turn}")
-    print("=" * 50)
-    print(f"Enemy: {monster['name']} - HP: {monster['hp']}/{monster['max_hp']}")
-    print(f"You: {player['name']} - HP: {player['hp']}/{player['max_hp']}")
-    print(f"Special Attack Cooldown: {player['special_cooldown']} turns")
-    print()
+    def _regular_attack(self):
+        """Perform regular attack"""
+        damage_variance = random.randint(-3, 3)
+        player_damage = self.player.attack + damage_variance
+        
+        print(f"\nYou attack {self.monster.name} for {player_damage} damage!")
+        self.monster.hp -= player_damage
+        input("\nPress Enter to continue...")
+        return "continue"
+    
+    def _special_attack(self):
+        """Perform special attack"""
+        success, message = self.player.use_special_attack()
+        if success:
+            damage_variance = random.randint(-5, 5)
+            player_damage = self.player.special_damage + damage_variance
+            
+            if self.player.player_class == "Warrior":
+                print(f"\nYou use MIGHTY SLASH on {self.monster.name}!")
+            elif self.player.player_class == "Mage":
+                print(f"\nYou cast FIREBALL on {self.monster.name}!")
+            else:  # Rogue
+                print(f"\nYou use SNEAK ATTACK on {self.monster.name}!")
+            
+            print(f"Critical hit for {player_damage} damage!")
+            print(f"Mana: {self.player.mana}/{self.player.max_mana}")
+            
+            self.monster.hp -= player_damage
+            input("\nPress Enter to continue...")
+            return "continue"
+        else:
+            print(f"\n{message}")
+            input("Press Enter to continue...")
+            return "retry"
+    
+    def _try_escape(self):
+        """Try to escape from battle"""
+        escape_chance = random.randint(1, 100)
+        if escape_chance <= 30:  # 30% chance to escape
+            print(f"\nYou successfully escaped from {self.monster.name}!")
+            input("Press Enter to continue...")
+            return "escaped"
+        else:
+            print(f"\nYou couldn't escape from {self.monster.name}!")
+            input("Press Enter to continue...")
+            return "continue"
+    
+    def _monster_turn(self):
+        """Handle monster's turn"""
+        monster_damage_variance = random.randint(-2, 2)
+        monster_damage = self.monster.attack + monster_damage_variance
+        
+        print(f"\n{self.monster.name} attacks you for {monster_damage} damage!")
+        self.player.hp -= monster_damage
+        
+        input("Press Enter to continue...")
+    
+    def _end_turn(self):
+        """End the current turn"""
+        self.player.reduce_special_cooldown()
+        self.turn += 1
