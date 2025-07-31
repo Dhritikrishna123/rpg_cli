@@ -1,10 +1,14 @@
+
+
+---
+
 # 🎮 Python Adventure RPG ⚔️
 
 <div align="center">
 
-**A vibrant and immersive text-based RPG adventure built with Python and the `rich` library.**
+**A vibrant and immersive terminal-based fantasy RPG built in Python using the `rich` library.**
 
-![Gameplay Screenshot](https://i.imgur.com/gJ5n4f5.png)
+![Gameplay Screenshot](image.png)
 
 </div>
 
@@ -12,146 +16,149 @@
 
 ## ✨ Overview
 
-Welcome to **Python Adventure RPG**, a classic command-line role-playing game that brings the magic of text-based adventures to life with a modern, colorful interface. Create your hero, choose your class, and embark on an epic journey filled with dangerous monsters, strategic combat, and glorious treasure. Forge your legend, one command at a time!
+**Python Adventure RPG** is a text-based terminal RPG that combines nostalgic gameplay with modern visuals using `rich`. Create your character, choose a class, battle monsters, level up, shop for potions, and save your progress — all from the command line.
 
 ---
 
-## 🚀 Key Features
+## 🚀 Features
 
--   **🎨 Rich & Beautiful Interface**: Utilizes the `rich` library for stunning, modern-looking text, tables, panels, and progress bars in the terminal.
--   **🛡️ Three Unique Classes**: Choose your path as a mighty **Warrior**, a powerful **Mage**, or a cunning **Rogue**, each with unique stats and special attacks.
--   **⚔️ Dynamic Turn-Based Combat**: Engage in strategic battles featuring regular attacks, mana-based special abilities with cooldowns, and potion usage.
--   **📈 Character Progression**: Gain XP by defeating monsters, level up to enhance your stats, and grow from a novice adventurer into a legendary hero.
--   **👹 Diverse Monster Menagerie**: Battle 8 different types of creatures, from lowly Goblins to fearsome Dragon Whelps, that scale in difficulty with your level.
--   **🏪 Interactive Shop**: Use the gold earned from your victories to visit the merchant and stock up on vital health and mana potions.
--   **💾 Save & Load System**: Your progress is valuable! Save your game at any time and load it later to continue your adventure right where you left off.
--   **🏃 Escape Mechanics**: Not ready for a fight? You have a chance to run away, but be warned—it's not always successful!
-
----
-
-## 🛠️ Getting Started
-
-### Prerequisites
-
--   Python 3.7 or higher
--   A terminal that supports rich text and colors (most modern terminals do).
-
-### Installation & Setup
-
-1.  **Clone the repository** to your local machine.
-    ```bash
-    git clone [https://github.com/your-username/rpg_cli.git](https://github.com/your-username/rpg_cli.git)
-    ```
-2.  **Navigate** to the game directory.
-    ```bash
-    cd rpg_cli
-    ```
-3.  **Install the required dependency**. This game uses the `rich` library to create its beautiful interface.
-    ```bash
-    pip install rich
-    ```
-4.  **Run the game**!
-    ```bash
-    python main.py
-    ```
+* **🎨 Rich UI**: Uses the `rich` library for stunning UI — colored text, tables, panels, progress bars.
+* **🧙 Class System**: Choose from **Warrior**, **Mage**, or **Rogue**, each with unique stats and abilities.
+* **⚔️ Strategic Combat**: Turn-based battles with regular attacks, class-based special moves, and potions.
+* **👹 Monster Scaling**: Fight 8 monster types — including Goblins, Trolls, and Dragon Whelps — with difficulty scaling to your level.
+* **📈 Level Progression**: Gain XP and level up to improve HP, Mana, Attack, and Special abilities.
+* **🏪 Potion Shop**: Purchase health and mana potions that scale in price and potency with your level.
+* **💾 Save/Load**: Supports saving to and loading from named save files via JSON in a `saves/` directory.
+* **🏃 Escape Mechanic**: Attempt to flee from battle with a 30% chance of success.
 
 ---
 
-## 🎯 How to Play
+## 🛠️ Installation
+
+### Requirements
+
+* Python 3.7+
+* A terminal that supports ANSI colors
+
+### Setup
+
+```bash
+git clone https://github.com/your-username/rpg_cli.git
+cd rpg_cli
+pip install rich
+python main.py
+```
+
+---
+
+## 🎮 How to Play
 
 ### Character Creation
 
-Your journey begins by creating a character. You will:
-1.  **Enter a name** for your hero.
-2.  **Choose a class**:
-    | Class | Strengths | Special Ability |
-    | :--- | :--- | :--- |
-    | **⚔️ Warrior** | High HP & Attack | **Mighty Slash** |
-    | **🔮 Mage** | Powerful Magic | **Fireball** |
-    | **🗡️ Rogue** | Balanced & Agile | **Sneak Attack** |
+Start the game and create your hero:
 
-### The Main Loop
+1. Choose a name.
+2. Pick a class:
 
-Once in the game, you'll be presented with a main menu where you can choose your next action:
--   **Fight a monster**: Seek out and battle a random creature.
--   **Visit the shop**: Purchase potions.
--   **Use potions**: Heal HP or restore Mana outside of combat.
--   **View character info**: See your detailed stats and progress.
--   **Save/Load game**: Manage your game sessions.
--   **Quit**: Exit the game.
+   | Class      | Strengths                | Special Ability |
+   | ---------- | ------------------------ | --------------- |
+   | ⚔️ Warrior | High HP & Attack         | Mighty Slash    |
+   | 🔮 Mage    | High Magic Damage        | Fireball        |
+   | 🗡️ Rogue  | Balanced & Fast Cooldown | Sneak Attack    |
 
-### Combat System
+---
 
-Combat is turn-based. On your turn, you can:
--   **Regular Attack**: A standard attack with reliable damage.
--   **Special Attack**: A powerful, class-specific move that costs mana and has a cooldown period.
--   **Use Potions**: Use your turn to heal or restore mana. This action allows you to skip the monster's next attack.
--   **Try to Run Away**: Attempt to flee from battle (30% success rate).
+### Game Menu Options
 
-### Progression
+Once in the main loop, you can:
 
--   **Gain XP & Gold**: Defeating monsters rewards you with experience points and gold.
--   **Level Up**: Accumulate enough XP to level up, which increases all your stats, fully restores your HP/Mana, and increases the XP required for the next level.
--   **Monster Scaling**: The monsters you encounter become stronger as you level up, ensuring the challenge never fades.
-    -   **Elite** monsters appear at level 4+
-    -   **Champion** monsters appear at level 7+
-    -   **Legendary** monsters appear at level 11+
+* `⚔️ Fight a monster`: Battle a scaled monster.
+* `🏪 Visit the shop`: Buy potions.
+* `🧪 Use health potion`: Heal yourself outside combat.
+* `🔮 Use mana potion`: Restore mana outside combat.
+* `📊 View character info`: Full stat display.
+* `💾 Save game`: Save progress to a JSON file.
+* `📁 Load game`: Load a previously saved file.
+* `🚪 Quit game`: Exit.
+
+---
+
+### Combat Mechanics
+
+Combat is turn-based with multiple actions:
+
+* **1. Regular Attack** — Basic attack.
+* **2. Special Attack** — High-damage class skill (mana + cooldown).
+* **3. Use Health Potion** — Restores HP, skips enemy turn.
+* **4. Use Mana Potion** — Restores Mana, skips enemy turn.
+* **5. Try to Run Away** — 30% success chance.
+
+Each turn updates status bars, stats, and cooldowns.
+
+---
+
+### Shop System
+
+* Potions scale with your level.
+* Prices increase as you grow stronger.
+* Health Potion: Restores HP.
+* Mana Potion: Restores Mana.
+* Purchase as many as you can afford.
+
+---
+
+### Save & Load
+
+* Automatically creates a `saves/` directory.
+* Save files are stored in JSON format.
+* Supports named saves and overwrite confirmation.
 
 ---
 
 ## 📁 Project Structure
 
-The project is organized into modular files, making it easy to understand and extend.
-
-
+```
 rpg_cli/
-├── main.py          # The main entry point for the game.
-├── game.py          # Core game loop, main menu, and event handling.
-├── player.py        # Manages the player character, stats, inventory, and progression.
-├── monsters.py      # Defines all monster types, their stats, and scaling logic.
-├── combat.py        # Handles the turn-based combat system and battle actions.
-├── shop.py          # Implements the interactive item shop.
-├── utils.py         # Utility functions used across the project (now mostly handled by rich).
-├── saves/           # Directory where save files are stored (created automatically).
-├── README.md        # You are here!
-└── LICENSE          # The MIT License file.
-
+├── main.py          # Entry point
+├── game.py          # Game loop and flow logic
+├── player.py        # Player class with progression, potions, etc.
+├── monsters.py      # Monster definitions and scaling
+├── combat.py        # Turn-based combat system
+├── shop.py          # Potion shop with level-based pricing
+├── utils.py         # Helper functions (UI, formatting)
+├── saves/           # Save files (auto-created)
+├── README.md        # This file
+└── LICENSE          # MIT License
+```
 
 ---
 
-## 💡 Future Enhancements
+## 💡 Planned Features
 
-This project has a solid foundation, but there's always room for more adventure!
--   **Equipment System**: Introduce weapons, armor, and accessories.
--   **Quest System**: Add story-driven missions with unique rewards.
--   **More Environments**: Explore different dungeons, forests, and towns.
--   **Boss Battles**: Create epic encounters with powerful, unique bosses.
--   **Expanded Skill Trees**: Allow for more customization upon leveling up.
+* 🗡 Equipment system (gear, armor)
+* 🧭 Quest system with side missions
+* 🌍 Multiple environments (dungeons, towns)
+* 🧠 Skill trees for class upgrades
+* 🐉 Boss fights with unique mechanics
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome and greatly appreciated! If you have an idea for an improvement:
+Contributions welcome!
 
-1.  Fork the repository.
-2.  Create your feature branch (`git checkout -b feature/AmazingFeature`).
-3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`).
-4.  Push to the branch (`git push origin feature/AmazingFeature`).
-5.  Open a Pull Request.
+1. Fork it
+2. Create a branch (`git checkout -b feature/thing`)
+3. Commit (`git commit -m 'Add thing'`)
+4. Push (`git push origin feature/thing`)
+5. PR
 
 ---
 
 ## 📄 License
 
-This project is open source and distributed under the **MIT License**. See `LICENSE` for more information.
+MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
-<div align="center">
 
-**Ready to forge your legend? The adventure awaits!**
-
-*Built with ❤️ and Python*
-
-</div>
