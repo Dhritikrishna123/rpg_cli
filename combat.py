@@ -41,7 +41,13 @@ class RegularAttack(BattleAction):
         damage_variance = random.randint(-3, 3)
         player_damage = player.attack + damage_variance
         
-        console.print(f"\n⚔️  You attack {monster.name} for [bold red]{player_damage}[/bold red] damage!", style="bold green")
+        # Critical hit logic
+        is_critical = random.random() < 0.10  # 10% chance
+        if is_critical:
+            player_damage = int(player_damage * 1.5)
+            console.print(f"\n💥 CRITICAL HIT! 💥", style="bold yellow")
+        
+        console.print(f"⚔️  You attack {monster.name} for [bold red]{player_damage}[/bold red] damage!", style="bold green")
         monster.take_damage(player_damage)
         return "continue"
 
@@ -99,6 +105,18 @@ class UseManaPotion(BattleAction):
         player.use_mana_potion()
         return "skip_monster_turn"
 
+class DefendAction(BattleAction):
+    @property
+    def action_name(self):
+        return "Defend"
+
+    def can_execute(self, player):
+        return True
+
+    def execute(self, player, monster):
+        console.print(f"\n🛡️ You brace for the next attack, reducing incoming damage!", style="bold blue")
+        return "defend"
+
 class TryEscape(BattleAction):
     @property
     def action_name(self):
@@ -121,6 +139,7 @@ class Combat:
         self._player = player
         self._monster = monster
         self._turn = 1
+        self._player_is_defending = False
         
         # Initialize battle actions
         self.actions = {
@@ -128,7 +147,8 @@ class Combat:
             "2": SpecialAttack(),
             "3": UseHealthPotion(),
             "4": UseManaPotion(),
-            "5": TryEscape()
+            "5": TryEscape(),
+            "6": DefendAction()
         }
     
     @property
@@ -276,6 +296,7 @@ class Combat:
     
     def _player_turn(self):
         """Handle player's turn"""
+        self._player_is_defending = False
         console.print("\n🎯 Choose your action:", style="bold cyan")
         
         # Display available actions
@@ -300,11 +321,13 @@ class Combat:
             
             console.print(f"{key}. {action.action_name}{status}")
         
-        choice = Prompt.ask("Enter your choice", choices=["1", "2", "3", "4", "5"], default="1")
+        choice = Prompt.ask("Enter your choice", choices=["1", "2", "3", "4", "5", "6"], default="1")
         
         action = self.actions[choice]
         if action.can_execute(self.player):
             result = action.execute(self.player, self.monster)
+            if result == "defend":
+                self._player_is_defending = True
             if result != "retry":
                 console.input("\nPress Enter to continue...")
             return result
@@ -315,9 +338,18 @@ class Combat:
     
     def _monster_turn(self):
         """Handle monster's turn"""
+        if random.random() < 0.15: # 15% dodge chance
+            console.print(f"\n💨 You deftly DODGED the {self.monster.name}'s attack!", style="bold cyan")
+            console.input("Press Enter to continue...")
+            return
+
         monster_damage_variance = random.randint(-2, 2)
         monster_damage = self.monster.attack + monster_damage_variance
         
+        if self._player_is_defending:
+            monster_damage = int(monster_damage / 2) # Halve the damage
+            console.print(f"\n🛡️ Your defense softened the blow!", style="bold blue")
+
         console.print(f"\n👹 {self.monster.name} attacks you for [bold red]{monster_damage}[/bold red] damage!", style="bold red")
         self.player.take_damage(monster_damage)
         

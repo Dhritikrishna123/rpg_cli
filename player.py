@@ -106,6 +106,33 @@ class Player(Character):
         self._gold = 50
         self._inventory = {"health_potions": 2, "mana_potions": 1}
         
+        # NEW: Equipment system
+        self._equipment = {
+            "weapon": None,
+            "armor": None,
+            "accessory": None
+        }
+        
+        # NEW: Skill points system
+        self._skill_points = 0
+        self._allocated_skills = {
+            "strength": 0,  # +2 attack per point
+            "vitality": 0,  # +10 HP per point
+            "intelligence": 0,  # +8 mana per point
+            "agility": 0   # +1 special damage per point
+        }
+        
+        # NEW: Player statistics
+        self._stats = {
+            "monsters_defeated": 0,
+            "total_xp_earned": 0,
+            "battles_won": 0,
+            "battles_lost": 0,
+            "potions_used": 0,
+            "gold_earned": 0,
+            "levels_gained": 0
+        }
+        
         if name and player_class:
             self._set_class_stats()
     
@@ -121,6 +148,127 @@ class Player(Character):
         self._player_class = value
     
     @property
+    def equipment(self):
+        return self._equipment.copy()
+    
+    @property
+    def skill_points(self):
+        return self._skill_points
+    
+    @property
+    def allocated_skills(self):
+        return self._allocated_skills.copy()
+    
+    @property
+    def stats(self):
+        return self._stats.copy()
+    
+    @property
+    def total_attack(self):
+        """Calculate total attack including equipment and skills"""
+        base_attack = self._attack
+        skill_bonus = self._allocated_skills["strength"] * 2
+        equipment_bonus = 0
+        
+        if self._equipment["weapon"]:
+            equipment_bonus += self._equipment["weapon"]["attack_bonus"]
+        
+        return base_attack + skill_bonus + equipment_bonus
+    
+    @property
+    def total_max_hp(self):
+        """Calculate total max HP including equipment and skills"""
+        base_hp = self._max_hp
+        skill_bonus = self._allocated_skills["vitality"] * 10
+        equipment_bonus = 0
+        
+        if self._equipment["armor"]:
+            equipment_bonus += self._equipment["armor"]["hp_bonus"]
+        
+        return base_hp + skill_bonus + equipment_bonus
+    
+    @property
+    def total_max_mana(self):
+        """Calculate total max mana including skills"""
+        base_mana = self._max_mana
+        skill_bonus = self._allocated_skills["intelligence"] * 8
+        return base_mana + skill_bonus
+    
+    @property
+    def total_special_damage(self):
+        """Calculate total special damage including skills"""
+        base_special = self._special_damage
+        skill_bonus = self._allocated_skills["agility"] * 1
+        return base_special + skill_bonus
+    
+    @property
+    def attack(self):
+        """Override to return total attack"""
+        return self.total_attack
+    
+    @property
+    def max_hp(self):
+        """Override to return total max HP"""
+        return self.total_max_hp
+    
+    @property
+    def max_mana(self):
+        """Override to return total max mana"""  
+        return self.total_max_mana
+    
+    @property
+    def special_damage(self):
+        """Override to return total special damage"""
+        return self.total_special_damage
+    
+    # NEW: Class-specific passive abilities
+    def get_class_passive_bonus(self, bonus_type):
+        """Get class-specific passive bonuses"""
+        if self._player_class == "Warrior" and bonus_type == "damage_reduction":
+            return 0.1  # 10% damage reduction
+        elif self._player_class == "Mage" and bonus_type == "mana_efficiency":
+            return 0.15  # 15% less mana cost for specials
+        elif self._player_class == "Rogue" and bonus_type == "critical_chance":
+            return 0.05  # +5% critical hit chance
+        return 0
+    
+    def equip_item(self, item_type, item):
+        """Equip an item"""
+        if item_type in self._equipment:
+            old_item = self._equipment[item_type]
+            self._equipment[item_type] = item
+            
+            # Update current HP/mana if max values changed
+            if item_type == "armor":
+                ratio = self.hp / (self.total_max_hp - (item["hp_bonus"] if item else 0) + (old_item["hp_bonus"] if old_item else 0))
+                self.hp = int(self.total_max_hp * ratio)
+            
+            console.print(f"⚔️ Equipped {item['name']}!", style="bold green")
+            return old_item
+        return None
+    
+    def allocate_skill_point(self, skill, points=1):
+        """Allocate skill points to a skill"""
+        if self._skill_points >= points and skill in self._allocated_skills:
+            self._skill_points -= points
+            self._allocated_skills[skill] += points
+            
+            # Update current stats if max values changed
+            if skill == "vitality":
+                self.hp = min(self.hp + (points * 10), self.total_max_hp)
+            elif skill == "intelligence":
+                self.mana = min(self.mana + (points * 8), self.total_max_mana)
+            
+            return True
+        return False
+    
+    def update_stat(self, stat_name, value):
+        """Update a player statistic"""
+        if stat_name in self._stats:
+            self._stats[stat_name] += value
+    
+    # Rest of the properties remain the same...
+    @property
     def mana(self):
         return self._mana
     
@@ -128,27 +276,7 @@ class Player(Character):
     def mana(self, value):
         if not isinstance(value, int) or value < 0:
             raise ValueError("Mana must be a non-negative integer")
-        self._mana = min(value, self._max_mana)
-    
-    @property
-    def max_mana(self):
-        return self._max_mana
-    
-    @max_mana.setter
-    def max_mana(self, value):
-        if not isinstance(value, int) or value < 0:
-            raise ValueError("Max mana must be a non-negative integer")
-        self._max_mana = value
-    
-    @property
-    def special_damage(self):
-        return self._special_damage
-    
-    @special_damage.setter
-    def special_damage(self, value):
-        if not isinstance(value, int) or value < 0:
-            raise ValueError("Special damage must be a non-negative integer")
-        self._special_damage = value
+        self._mana = min(value, self.total_max_mana)
     
     @property
     def special_cooldown(self):
@@ -172,7 +300,11 @@ class Player(Character):
     
     @property
     def special_mana_cost(self):
-        return self._special_mana_cost
+        # Apply mage passive ability
+        base_cost = self._special_mana_cost
+        if self._player_class == "Mage":
+            base_cost = int(base_cost * (1 - self.get_class_passive_bonus("mana_efficiency")))
+        return base_cost
     
     @special_mana_cost.setter
     def special_mana_cost(self, value):
@@ -212,13 +344,13 @@ class Player(Character):
     
     @property
     def inventory(self):
-        return self._inventory.copy()  # Return a copy to prevent direct modification
+        return self._inventory.copy()
     
     @property
     def mana_percentage(self):
-        if self._max_mana <= 0:
+        if self.total_max_mana <= 0:
             return 0
-        return (self._mana / self._max_mana) * 100
+        return (self._mana / self.total_max_mana) * 100
     
     @property
     def xp_percentage(self):
@@ -279,11 +411,11 @@ class Player(Character):
         class_table.add_column("Choice", style="cyan", no_wrap=True)
         class_table.add_column("Class", style="magenta", no_wrap=True)
         class_table.add_column("Description", style="green")
-        class_table.add_column("Stats", style="yellow")
+        class_table.add_column("Passive Ability", style="yellow")
         
-        class_table.add_row("1", "⚔️ Warrior", "High health and attack", "💪 Tanky Fighter")
-        class_table.add_row("2", "🔮 Mage", "Powerful special attacks", "🧠 Magical Damage")
-        class_table.add_row("3", "🗡️ Rogue", "Balanced with quick cooldowns", "⚡ Swift Assassin")
+        class_table.add_row("1", "⚔️ Warrior", "High health and attack", "🛡️ 10% Damage Reduction")
+        class_table.add_row("2", "🔮 Mage", "Powerful special attacks", "🧠 15% Mana Efficiency")
+        class_table.add_row("3", "🗡️ Rogue", "Balanced with quick cooldowns", "⚡ +5% Critical Chance")
         
         console.print(class_table)
         
@@ -305,10 +437,14 @@ class Player(Character):
         return player
     
     def take_damage(self, damage):
-        """Take damage from an attack"""
+        """Take damage from an attack with class passive abilities"""
         if damage < 0:
             raise ValueError("Damage cannot be negative")
         
+        # Apply warrior damage reduction
+        if self._player_class == "Warrior":
+            damage = int(damage * (1 - self.get_class_passive_bonus("damage_reduction")))
+            
         old_hp = self._hp
         self._hp = max(0, self._hp - damage)
         actual_damage = old_hp - self._hp
@@ -326,24 +462,108 @@ class Player(Character):
         status_table.add_column("Visual", style="yellow")
         
         # HP bar
-        hp_bar = self._create_progress_bar(self.hp, self.max_hp, "red")
-        status_table.add_row("❤️ Health", f"{self.hp}/{self.max_hp}", hp_bar)
+        hp_bar = self._create_progress_bar(self.hp, self.total_max_hp, "red")
+        status_table.add_row("❤️ Health", f"{self.hp}/{self.total_max_hp}", hp_bar)
         
         # Mana bar
-        mana_bar = self._create_progress_bar(self.mana, self.max_mana, "blue")
-        status_table.add_row("🔮 Mana", f"{self.mana}/{self.max_mana}", mana_bar)
+        mana_bar = self._create_progress_bar(self.mana, self.total_max_mana, "blue")
+        status_table.add_row("🔮 Mana", f"{self.mana}/{self.total_max_mana}", mana_bar)
         
         # XP bar
         xp_bar = self._create_progress_bar(self.xp, self.xp_to_next, "green")
         status_table.add_row("⭐ Experience", f"{self.xp}/{self.xp_to_next}", xp_bar)
         
         # Other stats
-        status_table.add_row("⚔️ Attack", str(self.attack), "")
+        status_table.add_row("⚔️ Attack", str(self.total_attack), "")
         status_table.add_row("💰 Gold", str(self.gold), "")
+        status_table.add_row("🔥 Skill Points", str(self.skill_points), "")
         status_table.add_row("🧪 Health Potions", str(self._inventory['health_potions']), "")
         status_table.add_row("🔮 Mana Potions", str(self._inventory['mana_potions']), "")
         
         return status_table
+    
+    def view_skill_menu(self):
+        """Display and handle skill point allocation"""
+        if self._skill_points <= 0:
+            console.print("❌ No skill points available!", style="bold red")
+            return
+            
+        console.clear()
+        console.print(Panel.fit(f"🔥 Skill Points Available: {self._skill_points}", 
+                              title="💪 Character Development", border_style="gold1"))
+        
+        skills_table = Table(title="Skills")
+        skills_table.add_column("Skill", style="cyan")
+        skills_table.add_column("Current", style="green")
+        skills_table.add_column("Effect", style="yellow")
+        skills_table.add_column("Next Level", style="blue")
+        
+        skills_table.add_row("💪 Strength", str(self._allocated_skills["strength"]), 
+                           "+2 Attack per point", f"+{(self._allocated_skills['strength'] + 1) * 2} total attack")
+        skills_table.add_row("❤️ Vitality", str(self._allocated_skills["vitality"]), 
+                           "+10 HP per point", f"+{(self._allocated_skills['vitality'] + 1) * 10} total HP")
+        skills_table.add_row("🧠 Intelligence", str(self._allocated_skills["intelligence"]), 
+                           "+8 Mana per point", f"+{(self._allocated_skills['intelligence'] + 1) * 8} total mana")
+        skills_table.add_row("⚡ Agility", str(self._allocated_skills["agility"]), 
+                           "+1 Special Damage", f"+{(self._allocated_skills['agility'] + 1)} special damage")
+        
+        console.print(skills_table)
+        
+        choice = Prompt.ask("Allocate point to which skill? (strength/vitality/intelligence/agility or 'back')", 
+                          choices=["strength", "vitality", "intelligence", "agility", "back"])
+        
+        if choice != "back":
+            if self.allocate_skill_point(choice):
+                console.print(f"✅ Allocated 1 skill point to {choice.title()}!", style="bold green")
+                console.input("Press Enter to continue...")
+            else:
+                console.print("❌ Failed to allocate skill point!", style="bold red")
+                console.input("Press Enter to continue...")
+    
+    def view_equipment_menu(self):
+        """Display current equipment"""
+        console.clear()
+        equipment_table = Table(title="🎒 Current Equipment")
+        equipment_table.add_column("Slot", style="cyan")
+        equipment_table.add_column("Item", style="green")
+        equipment_table.add_column("Bonus", style="yellow")
+        
+        for slot, item in self._equipment.items():
+            if item:
+                bonus_text = ""
+                if "attack_bonus" in item:
+                    bonus_text += f"+{item['attack_bonus']} Attack "
+                if "hp_bonus" in item:
+                    bonus_text += f"+{item['hp_bonus']} HP "
+                equipment_table.add_row(slot.title(), item["name"], bonus_text.strip())
+            else:
+                equipment_table.add_row(slot.title(), "Empty", "No bonus")
+        
+        console.print(equipment_table)
+        console.input("Press Enter to continue...")
+    
+    def view_statistics(self):
+        """Display player statistics"""
+        console.clear()
+        stats_table = Table(title="📊 Adventure Statistics")
+        stats_table.add_column("Statistic", style="cyan")
+        stats_table.add_column("Value", style="green")
+        
+        stats_table.add_row("👹 Monsters Defeated", str(self._stats["monsters_defeated"]))
+        stats_table.add_row("⭐ Total XP Earned", str(self._stats["total_xp_earned"]))
+        stats_table.add_row("🏆 Battles Won", str(self._stats["battles_won"]))
+        stats_table.add_row("💀 Battles Lost", str(self._stats["battles_lost"]))
+        stats_table.add_row("🧪 Potions Used", str(self._stats["potions_used"]))
+        stats_table.add_row("💰 Gold Earned", str(self._stats["gold_earned"]))
+        stats_table.add_row("📈 Levels Gained", str(self._stats["levels_gained"]))
+        
+        # Calculate win rate
+        total_battles = self._stats["battles_won"] + self._stats["battles_lost"]
+        win_rate = (self._stats["battles_won"] / total_battles * 100) if total_battles > 0 else 0
+        stats_table.add_row("📈 Win Rate", f"{win_rate:.1f}%")
+        
+        console.print(stats_table)
+        console.input("Press Enter to continue...")
     
     def _create_progress_bar(self, current, maximum, color):
         """Create a visual progress bar"""
@@ -368,6 +588,7 @@ class Player(Character):
         
         old_level = self.level
         self.level += 1
+        self._stats["levels_gained"] += 1
         
         # Increase stats
         hp_increase = 15 + (self.level * 2)
@@ -375,12 +596,18 @@ class Player(Character):
         attack_increase = 3 + self.level
         special_increase = 5 + self.level
         
-        self.max_hp += hp_increase
-        self.hp = self.max_hp  # Full heal on level up
-        self.max_mana += mana_increase
-        self.mana = self.max_mana  # Full mana on level up
-        self.attack += attack_increase
-        self.special_damage += special_increase
+        self._max_hp += hp_increase
+        self.hp = self.total_max_hp  # Full heal on level up
+        self._max_mana += mana_increase
+        self.mana = self.total_max_mana  # Full mana on level up
+        self._attack += attack_increase
+        self._special_damage += special_increase
+        
+        # Award skill points (1 per level, bonus at certain levels)
+        skill_points_gained = 1
+        if self.level % 5 == 0:  # Bonus skill point every 5 levels
+            skill_points_gained += 1
+        self._skill_points += skill_points_gained
         
         # Set XP for next level
         self.xp = 0
@@ -395,6 +622,7 @@ class Player(Character):
         increases_table.add_row("🔮 Max Mana", f"+{mana_increase}")
         increases_table.add_row("⚔️ Attack", f"+{attack_increase}")
         increases_table.add_row("💥 Special Attack", f"+{special_increase}")
+        increases_table.add_row("🔥 Skill Points", f"+{skill_points_gained}")
         
         console.print(increases_table)
         console.print("✨ Fully healed and mana restored!", style="bold green")
@@ -406,21 +634,22 @@ class Player(Character):
             console.print("❌ You don't have any health potions!", style="bold red")
             return False
         
-        if self.hp >= self.max_hp:
+        if self.hp >= self.total_max_hp:
             console.print("❌ Your HP is already full!", style="bold red")
             return False
         
         # Calculate healing amount
         heal_amount = 30 + (self.level * 5)
         old_hp = self.hp
-        self.hp = min(self.max_hp, self.hp + heal_amount)
+        self.hp = min(self.total_max_hp, self.hp + heal_amount)
         actual_heal = self.hp - old_hp
         
         self._inventory["health_potions"] -= 1
+        self._stats["potions_used"] += 1
         
         console.print("🧪 You used a health potion!", style="bold green")
         console.print(f"✨ Restored {actual_heal} HP!", style="bold yellow")
-        console.print(f"Current HP: [red]{self.hp}/{self.max_hp}[/red]")
+        console.print(f"Current HP: [red]{self.hp}/{self.total_max_hp}[/red]")
         return True
     
     def use_mana_potion(self):
@@ -429,21 +658,22 @@ class Player(Character):
             console.print("❌ You don't have any mana potions!", style="bold red")
             return False
         
-        if self.mana >= self.max_mana:
+        if self.mana >= self.total_max_mana:
             console.print("❌ Your mana is already full!", style="bold red")
             return False
         
         # Calculate mana restoration
         mana_amount = 25 + (self.level * 3)
         old_mana = self.mana
-        self.mana = min(self.max_mana, self.mana + mana_amount)
+        self.mana = min(self.total_max_mana, self.mana + mana_amount)
         actual_restore = self.mana - old_mana
         
         self._inventory["mana_potions"] -= 1
+        self._stats["potions_used"] += 1
         
         console.print("🔮 You used a mana potion!", style="bold blue")
         console.print(f"✨ Restored {actual_restore} mana!", style="bold yellow")
-        console.print(f"Current Mana: [blue]{self.mana}/{self.max_mana}[/blue]")
+        console.print(f"Current Mana: [blue]{self.mana}/{self.total_max_mana}[/blue]")
         return True
     
     def use_special_attack(self):
@@ -486,18 +716,22 @@ class Player(Character):
                 "player_class": self.player_class,
                 "level": self.level,
                 "hp": self.hp,
-                "max_hp": self.max_hp,
+                "max_hp": self._max_hp,  # Save base values
                 "mana": self.mana,
-                "max_mana": self.max_mana,
-                "attack": self.attack,
-                "special_damage": self.special_damage,
+                "max_mana": self._max_mana,  # Save base values
+                "attack": self._attack,  # Save base values
+                "special_damage": self._special_damage,
                 "special_cooldown": self.special_cooldown,
                 "special_max_cooldown": self.special_max_cooldown,
-                "special_mana_cost": self.special_mana_cost,
+                "special_mana_cost": self._special_mana_cost,
                 "xp": self.xp,
                 "xp_to_next": self.xp_to_next,
                 "gold": self.gold,
-                "inventory": self._inventory
+                "inventory": self._inventory,
+                "equipment": self._equipment,
+                "skill_points": self._skill_points,
+                "allocated_skills": self._allocated_skills,
+                "stats": self._stats
             }
             
             with open(filename, 'w') as file:
@@ -527,19 +761,25 @@ class Player(Character):
             player.name = player_data.get("name", "")
             player.player_class = player_data.get("player_class", "Warrior")
             player.level = player_data.get("level", 1)
-            player.max_hp = player_data.get("max_hp", 100)
+            player._max_hp = player_data.get("max_hp", 100)
             player.hp = player_data.get("hp", 100)
-            player.max_mana = player_data.get("max_mana", 30)
+            player._max_mana = player_data.get("max_mana", 30)
             player.mana = player_data.get("mana", 30)
-            player.attack = player_data.get("attack", 20)
-            player.special_damage = player_data.get("special_damage", 35)
+            player._attack = player_data.get("attack", 20)
+            player._special_damage = player_data.get("special_damage", 35)
             player.special_cooldown = player_data.get("special_cooldown", 0)
             player.special_max_cooldown = player_data.get("special_max_cooldown", 5)
-            player.special_mana_cost = player_data.get("special_mana_cost", 15)
+            player._special_mana_cost = player_data.get("special_mana_cost", 15)
             player.xp = player_data.get("xp", 0)
             player.xp_to_next = player_data.get("xp_to_next", 50)
             player.gold = player_data.get("gold", 50)
             player._inventory = player_data.get("inventory", {"health_potions": 2, "mana_potions": 1})
+            
+            # Load new features (with defaults for old saves)
+            player._equipment = player_data.get("equipment", {"weapon": None, "armor": None, "accessory": None})
+            player._skill_points = player_data.get("skill_points", 0)
+            player._allocated_skills = player_data.get("allocated_skills", {"strength": 0, "vitality": 0, "intelligence": 0, "agility": 0})
+            player._stats = player_data.get("stats", {"monsters_defeated": 0, "total_xp_earned": 0, "battles_won": 0, "battles_lost": 0, "potions_used": 0, "gold_earned": 0, "levels_gained": 0})
             
             console.print(f"📁 Game loaded successfully from {filename}!", style="bold green")
             return player
@@ -556,7 +796,7 @@ class Player(Character):
         info_text = Text()
         info_text.append(f"Class: {self.player_class}\n", style="bold cyan")
         info_text.append(f"Special Attack Cooldown: {self.special_cooldown} turns\n", style="yellow")
-        info_text.append(f"Special Attack Damage: {self.special_damage}\n", style="red")
+        info_text.append(f"Special Attack Damage: {self.total_special_damage}\n", style="red")
         info_text.append(f"Special Mana Cost: {self.special_mana_cost}", style="blue")
         
         console.print(Panel(info_text, title="📊 Additional Stats", border_style="blue"))
